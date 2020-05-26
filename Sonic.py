@@ -38,6 +38,7 @@ class Game():
                     self.ring.move(-200)
             time.sleep(0.1)
             self.sonic.anim()
+            self.ring.anim()
             self.canvas.update()
                 
 
@@ -85,6 +86,8 @@ class Sonic():
         self.canvas.update()
 
 class Ring():
+    ANIM = ["0", "1", "2", "3", "4"]
+    animation = 0
     def __init__(self, canvas, x):
         self.sprite = PhotoImage(file="Sonic/Rings/0.png")
         self.ring = canvas.create_image(x, 330, image=self.sprite)
@@ -95,5 +98,11 @@ class Ring():
 
     def pos(self):
         return self.canvas.coords(self.ring)
+
+    def anim(self):
+        self.animation = (self.animation + 1) % len(self.ANIM)    
+        self.sprite = PhotoImage(file=r"Sonic/Rings/" + self.ANIM[self.animation] + ".png")
+        self.canvas.itemconfig(self.ring, image=self.sprite)
+        self.canvas.update()
 
 Game() # creates the game object
