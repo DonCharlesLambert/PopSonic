@@ -7,7 +7,8 @@ class Game():
         self.canvas = Canvas(root, width=600, height=400) # creates a canvas to draw in the window
         self.create_bg()
         self.ring = Ring(self.canvas, 500)
-        self.sonic = Sonic(self.canvas) #creates Sonic object and puts it on the canvas
+        self.sonic = Sonic(self.canvas, "Sonic") #creates Sonic object and puts it on the canvas
+        self.knuckles = Sonic(self.canvas, "Knuckles")
         self.canvas.bind("<KeyPress>", self.key_press) # calls key_press function when btn is press
         self.canvas.bind("<KeyRelease>", self.key_release)
         self.canvas.focus_set() # focuses button presses on the canvas
@@ -21,45 +22,55 @@ class Game():
 
     def key_press(self, key):
         if key.char == "d":
-            self.sonic.move("right")
+            self.sonic.move(self.sonic.RIGHT)
         if key.char == "a":
-            self.sonic.move("left")
+            self.sonic.move(self.sonic.LEFT)
+
+        if key.char == "l":
+            self.knuckles.move(self.sonic.RIGHT)
+        if key.char == "j":
+            self.knuckles.move(self.sonic.LEFT)
 
     def key_release(self, key):
-        self.sonic.stance()
+        if key.char == "a" or key.char == "d":
+            self.sonic.stance()
+        elif  key.char == "l" or key.char == "j":
+            self.knuckles.stance()
+
+    def collision(self, player):
+        if self.ring.pos()[0] - 10 < player.pos()[0] < self.ring.pos()[0] + 10:
+            x = self.ring.pos()[0]
+            if x < 300:
+                self.ring.move(200)
+            else:
+                self.ring.move(-200)
 
     def animation(self):
         while True:
-            if self.ring.pos()[0] - 10 < self.sonic.pos()[0] < self.ring.pos()[0] + 10:
-                x = self.ring.pos()[0]
-                if x < 300:
-                    self.ring.move(200)
-                else:
-                    self.ring.move(-200)
+            self.collision(self.sonic)
+            self.collision(self.knuckles)
             time.sleep(0.1)
             self.sonic.anim()
+            self.knuckles.anim()
             self.ring.anim()
             self.canvas.update()
                 
 
 class Sonic():
-    SPEED = 25
+    SPEED  = 25
 
     STANCE = "stance"
-    RUN = "run"
-    LEFT = "left"
-    RIGHT = "right"
+    RUN    = "run"
+    LEFT   = "left"
+    RIGHT  = "right"
 
-    
-    STANCE_LEFT  = ["15", "16", "17", "18", "19"]
-    STANCE_RIGHT = ["0" , "1", "2", "3", "4"]
-    RUN_RIGHT    = ["11", "12", "13", "14"]
-    RUN_LEFT     = ["26", "27", "28", "29"]
-    def __init__(self, canvas):
-        self.sprite = PhotoImage(file="img/Sonic/0.png") # gets the sonic image
+    STANCE = ["0" , "1", "2", "3", "4"]
+    RUN    = ["11", "12", "13", "14"]
+    def __init__(self, canvas, name):
+        self.sprite = PhotoImage(file="img/" + name + "/left/0.png") # gets the sonic image
         self.sonic = canvas.create_image(300, 330, image=self.sprite) # puts sonic image on canvas
         self.canvas = canvas
-
+        self.name = name
         
         self.animation = 0
         self.direction = self.RIGHT
@@ -71,30 +82,26 @@ class Sonic():
     def move(self, direction):
         self.action = self.RUN
         self.direction = direction
-        if direction == self.RIGHT:
-            self.canvas.move(self.sonic, self.SPEED, 0)
-        elif direction == self.LEFT:
-            self.canvas.move(self.sonic, -self.SPEED, 0)
 
     def pos(self):
         return self.canvas.coords(self.sonic)
 
     def anim(self):
         direction = self.direction
+        if self.action == self.RUN:
+            sprite_list = self.RUN
+            
+        elif self.action == self.STANCE:
+            sprite_list = self.STANCE
+
+        
         if direction == self.RIGHT and self.action == self.RUN:
-            sprite_list = self.RUN_RIGHT
-            
+            self.canvas.move(self.sonic, self.SPEED, 0)
         elif direction == self.LEFT and self.action == self.RUN:
-            sprite_list = self.RUN_LEFT
-            
-        elif direction == self.RIGHT and self.action == self.STANCE:
-            sprite_list = self.STANCE_RIGHT
-            
-        elif direction == self.LEFT and self.action == self.STANCE:
-            sprite_list = self.STANCE_LEFT
+            self.canvas.move(self.sonic, -self.SPEED, 0)
         
         self.animation = (self.animation + 1) % len(sprite_list)    
-        self.sprite = PhotoImage(file=r"img/Sonic/" + sprite_list[self.animation] + ".png")
+        self.sprite = PhotoImage(file=r"img/" + self.name + "/" + self.direction + "/" + sprite_list[self.animation] + ".png")
         self.canvas.itemconfig(self.sonic, image=self.sprite)
         self.canvas.update()
 
