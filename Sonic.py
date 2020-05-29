@@ -5,6 +5,15 @@ import time
 from random import randint
 
 class Game:
+    PLAYER_ONE_LEFT     = "a"
+    PLAYER_ONE_RIGHT    = "d"
+    PLAYER_ONE_JUMP     = "w"
+    PLAYER_ONE_PAD      = PLAYER_ONE_LEFT, PLAYER_ONE_RIGHT, PLAYER_ONE_JUMP
+    
+    PLAYER_TWO_LEFT     = "j"
+    PLAYER_TWO_RIGHT    = "l"
+    PLAYER_TWO_JUMP     = "i"
+    PLAYER_TWO_PAD      = PLAYER_TWO_LEFT, PLAYER_TWO_RIGHT, PLAYER_TWO_JUMP
     def __init__(self):
         # creates a tkinter window
         window = Tk()
@@ -28,26 +37,39 @@ class Game:
         # keeps the window running
         window.mainloop()
 
-    def key_press(self, key):
-        if key.char.lower() == "a":
-            self.sonic.move(self.sonic.LEFT)
-        if key.char.lower() == "d":
-            self.sonic.move(self.sonic.RIGHT)
-        if key.char.lower() == "w":
-            self.sonic.jump()                       # added clause
+    def key_press(self, e):
+        key = e.char
+        self.player_one_controller(key, self.sonic)
+        self.player_two_controller(key, self.knuckles)
 
-        if key.char.lower() == "j":
-            self.knuckles.move(self.knuckles.LEFT)
-        if key.char.lower() == "l":
-            self.knuckles.move(self.knuckles.RIGHT)
-        if key.char.lower() == "i":
-            self.knuckles.jump()
+    def player_one_controller(self, key, player):
+        if key == self.PLAYER_ONE_LEFT:
+            player.move_left()
+        if key == self.PLAYER_ONE_RIGHT:
+            player.move_right()
+        if key == self.PLAYER_ONE_JUMP:
+            player.jump()
 
-    def key_release(self, key):
-        if key.char.lower() == "a" or key.char.lower() == "d":
-            self.sonic.stance()
-        elif key.char.lower() == "j" or key.char.lower() == "l":
-            self.knuckles.stance()
+    def player_two_controller(self, key, player):
+        if key == self.PLAYER_TWO_LEFT:
+            player.move_left()
+        if key == self.PLAYER_TWO_RIGHT:
+            player.move_right()
+        if key == self.PLAYER_TWO_JUMP:
+            player.jump()
+
+    def key_release(self, e):
+        key = e.char
+        self.player_one_release_controller(key, self.sonic)
+        self.player_two_release_controller(key, self.knuckles)
+
+    def player_one_release_controller(self, key, player):
+        if key in self.PLAYER_ONE_PAD:
+            player.stop()
+
+    def player_two_release_controller(self, key, player):
+        if key in self.PLAYER_TWO_PAD:
+            player.stop()
 
     def create_bg(self):
         self.bg_image = PhotoImage(file="img/bg.png")
@@ -65,25 +87,31 @@ class Game:
     def collision(self, player):
         ring_pos = self.ring.pos()
         player_pos = player.pos()
-        # checks if sonic and ring collide
         if player_pos[0] - 20 < ring_pos[0] < player_pos[0] + 20:
-            if player_pos[1] - 20 < ring_pos[1] < player_pos[1] + 20:       # added a lot to this function
-                if ring_pos[0] < 300:
-                    self.ring.move(randint(0, 300), 0)
-                else:
-                    self.ring.move(randint(-300, 0), 0)
+            if player_pos[1] - 20 < ring_pos[1] < player_pos[1] + 20:
+                self.move_ring()
+                self.update_score(player)
 
-                if ring_pos[1] > 280:
-                    self.ring.move(0, randint(-25, 0))                        ######## spaghetti
-                else:
-                    self.ring.move(0, randint(0, 25))
-                print(self.ring.pos())
-                player.score = player.score + 1
-                if player.name == "Sonic":
-                    self.canvas.itemconfig(self.sonic_score, text=player.score)
-                else:
-                    self.canvas.itemconfig(self.knuckles_score, text=player.score)
 
+    def move_ring(self):
+        ring_pos = self.ring.pos()
+        if ring_pos[0] < 300:
+            self.ring.move(randint(0, 300), 0)
+        else:
+            self.ring.move(randint(-300, 0), 0)
+
+        if ring_pos[1] > 280:
+            self.ring.move(0, randint(-25, 0))
+        else:
+            self.ring.move(0, randint(0, 25))
+
+    def update_score(self, player):
+        player.score = player.score + 1
+        if player.name == "Sonic":
+            self.canvas.itemconfig(self.sonic_score, text=player.score)
+        else:
+            self.canvas.itemconfig(self.knuckles_score, text=player.score)
+            
 class Sonic:
     RIGHT   = "right"
     LEFT    = "left"
@@ -101,30 +129,46 @@ class Sonic:
         self.action = self.STANCE
         self.name = name
         self.score = 0
+        self.previous_action = None
         
         self.sprite = PhotoImage(file="img/" + self.name + "/" + self.direction + "/0.png")
         self.sonic = canvas.create_image(300, 330, image=self.sprite)
         self.canvas = canvas
 
 
-    def move(self, direction):
-        self.direction = direction
+    def move(self):
         if self.action != self.JUMP:
-            self.action = self.RUN      # added clause
+            self.action = self.RUN
         else:
-            if self.direction == self.RIGHT:
-                self.canvas.move(self.sonic,  self.SPEED, 0) ######## spaghetti
-            else:
-                self.canvas.move(self.sonic, -self.SPEED, 0)
-
-    def stance(self):
-        if self.action != self.JUMP:
-            self.action = self.STANCE
+            self.previous_action = self.RUN
 
     def jump(self):
         if self.action != self.JUMP:
             self.animation = 0
-            self.action = self.JUMP        # added function
+            self.previous_action = self.action
+            self.action = self.JUMP 
+
+    def move_left(self):
+        self.direction = self.LEFT
+        self.move()
+
+    def move_right(self):
+        self.direction = self.RIGHT
+        self.move()
+
+    def shift(self):
+        if self.action == self.RUN and self.direction == self.RIGHT:
+            self.canvas.move(self.sonic,  self.SPEED, 0)
+        elif self.action == self.RUN and self.direction == self.LEFT:
+            self.canvas.move(self.sonic, -self.SPEED, 0)
+        elif self.previous_action != self.STANCE and self.action == self.JUMP and self.direction == self.RIGHT:
+            self.canvas.move(self.sonic,  self.SPEED, 0) ######## spaghetti
+        elif self.previous_action != self.STANCE and self.action == self.JUMP and self.direction == self.LEFT:
+            self.canvas.move(self.sonic, -self.SPEED, 0)
+
+    def stop(self):
+        if self.action != self.JUMP:
+            self.action = self.STANCE
 
     def pos(self):
         return self.canvas.coords(self.sonic)
@@ -135,14 +179,10 @@ class Sonic:
         elif self.action == self.STANCE:
             sprite_list = self.STANCE_LIST
         elif self.action == self.JUMP:
-            sprite_list = self.JUMP_LIST       # added clause
+            sprite_list = self.JUMP_LIST
             self.jump_anim()
 
-        if self.action == self.RUN and self.direction == self.RIGHT:
-            self.canvas.move(self.sonic,  self.SPEED, 0)
-        elif self.action == self.RUN and self.direction == self.LEFT:
-            self.canvas.move(self.sonic, -self.SPEED, 0)
-
+        self.shift()
         self.animation = (self.animation + 1) % (len(sprite_list))
         self.sprite = PhotoImage(file="img/" + self.name + "/" + self.direction + "/" + sprite_list[self.animation] + ".png")
         self.canvas.itemconfig(self.sonic, image=self.sprite)
@@ -151,11 +191,11 @@ class Sonic:
     def jump_anim(self):
         if self.animation < len(self.JUMP_LIST)/2:
             self.canvas.move(self.sonic, 0, -self.SPEED)
-        elif not self.animation == len(self.JUMP_LIST) - 1:           # added function
+        elif not self.animation == len(self.JUMP_LIST) - 1:
             self.canvas.move(self.sonic, 0, self.SPEED)
         else:
             self.canvas.move(self.sonic, 0, self.SPEED)
-            self.action = self.STANCE ######## spaghetti
+            self.action = self.STANCE
         
 
 class Ring:
@@ -166,7 +206,7 @@ class Ring:
         self.canvas = canvas
 
     def move(self, x, y):
-        self.canvas.move(self.ring, x, y)           # added argument
+        self.canvas.move(self.ring, x, y)
 
     def pos(self):
         return self.canvas.coords(self.ring)
